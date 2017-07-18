@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta charset="utf-8" />
+        <title>OAuth9 Server</title>
+        <meta name="description" content="" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <base href="/" />
+        <link rel="stylesheet" type="text/css" href="/webjars/bootstrap/css/bootstrap.min.css" />
+        <script type="text/javascript" src="/webjars/jquery/jquery.min.js"></script>
+        <script type="text/javascript" src="/webjars/bootstrap/js/bootstrap.min.js"></script>
+    </head>
+    <body>
+
+        <div class="container">
+            <h1>Login</h1>
+        </div>
+
+        {{^ isAuthenticated}}
+        <div class="container">
+            <div>
+                With Facebook: <a href="/login/facebook">click here</a>
+            </div>
+            <div>
+                With Github: <a href="/login/github">click here</a>
+            </div>
+
+            <div class="form-horizontal">
+                {{# loginFormRimas}}
+                {{/ loginFormRimas}}
+            </div>
+
+            <div class="form-horizontal">
+                {{# loginFormOna}}
+                {{/ loginFormOna}}
+            </div>
+
+        </div>
+        {{/ isAuthenticated}}
+
+        {{# isAuthenticated}}
+        <div class="container">
+            <div>Logged in as: <span>{{username}}</span></div>
+            <div>Authorities:  <span>{{authorities}}</span></div>
+            <div class="form-horizontal">
+                <form action="/logout" method="post">
+                    {{& htmlOfCsrfHiddenInput}}
+                    <button class="btn btn-primary" type="submit">Logout</button>
+                </form>
+            </div>
+        </div>
+        {{/ isAuthenticated}}
+
+    </body>
+</html>
+

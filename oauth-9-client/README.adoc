@@ -1,0 +1,153 @@
+:star: {asterisk}
+:all: {asterisk}{asterisk}
+
+== Creating a Client Application
+
+A client application for our Authorization Server that is itself a web
+application is easy to create with Spring Boot. Here's an example:
+
+.ClientApplication.java
+[source,java]
+----
+@EnableAutoConfiguration
+@Configuration
+@EnableOAuth2Sso
+@RestController
+public class ClientApplication {
+
+  @RequestMapping("/")
+  public String home(Principal user) {
+    return "Hello " + user.getName();
+  }
+
+  public static void main(String[] args) {
+    new SpringApplicationBuilder(ClientApplication.class)
+        .properties("spring.config.name=client").run(args);
+  }
+
+}
+----
+
+NOTE: The `ClientApplication` class MUST NOT be created in the same
+package (or a sub-package) of the `SocialApplication` class. Otherwise,
+Spring will load some `ClientApplication` auto-configurations while
+starting the `SocialApplication` server, resulting in startup errors.
+
+The ingredients of the client are a home page (just prints the user's
+name), and an explicit name for a configuration file (via
+`spring.config.name=client`). When we run this app it will look for a
+configuration file which we provide as follows:
+
+.client.yml
+[source,yaml]
+----
+server:
+  port: 9999
+  context-path: /client
+security:
+  oauth2:
+    client:
+      client-id: acme
+      client-secret: acmesecret
+      access-token-uri: http://localhost:8080/oauth/token
+      user-authorization-uri: http://localhost:8080/oauth/authorize
+    resource:
+      user-info-uri: http://localhost:8080/me
+----
+
+The configuration looks a lot like the values we used in the main app,
+but with the "acme" client instead of the Facebook or Github ones. The
+app will run on port 9999 to avoid conflicts with the main app. And it
+refers to a user info endpoint "/me" which we haven't implemented yet.
+
+Note that the `server.context-path` is set explicitly, so if you run
+the app to test it remember the home page is
+http://localhost:9999/client.  Clicking on that link should take you
+to the auth server and once you you have authenticated with the social
+provider of your choice you will be redirected back to the client
+app
+
+NOTE: The context path has to be explicit if you are running both the
+client and the auth server on localhost, otherwise the cookie paths
+clash and the two apps cannot agree on a session identifier.
+
+== Protecting the User Info Endpoint
+
+To use our new Authorization Server for single sign on, just like we
+have been using Facebook and Github, it needs to have a `/user`
+endpoint that is protected by the access tokens it creates. So far we
+have a `/user` endpoint, and it is secured with cookies created when
+the user authenticates. To secure it in addition with the access
+tokens granted locally we can just re-use the existing endpoint and
+make an alias to it on a new path:
+
+.SocialApplication.java
+[source,java]
+----
+@RequestMapping({ "/user", "/me" })
+public Map<String, String> user(Principal principal) {
+  Map<String, String> map = new LinkedHashMap<>();
+  map.put("name", principal.getName());
+  return map;
+}
+----
+
+NOTE: We have converted the `Principal` into a `Map` so as to hide the
+parts that we don't want to expose to the browser, and also to unfify
+the behaviour of the endpoint between the two external authentication
+providers. In principle we could add more detail here, like a
+provider-specific unique identifier for instance, or an e-mail address
+if it's available.
+
+The "/me" path can now be protected with the access token by declaring
+that our app is a Resource Server (as well as an Authorization
+Server). We create a new configuration class (as n inner class in the
+main app, but it could also be split out into a separate standalone
+class):
+
+.SocialApplication.java
+[source,java]
+----
+@Configuration
+@EnableResourceServer
+protected static class ResourceServerConfiguration
+    extends ResourceServerConfigurerAdapter {
+  @Override
+  public void configure(HttpSecurity http) throws Exception {
+    http
+      .antMatcher("/me")
+      .authorizeRequests().anyRequest().authenticated();
+  }
+}
+----
+
+In addition we need to specify an `@Order` for the main application
+security:
+
+.SocialApplication.java
+[source,java]
+----
+@SpringBootApplication
+...
+@Order(SecurityProperties.ACCESS_OVERRIDE_ORDER)
+public class SocialApplication extends WebSecurityConfigurerAdapter {
+  ...
+}
+----
+
+The `@EnableResourceServer` annotation creates a security filter with
+`@Order(SecurityProperties.ACCESS_OVERRIDE_ORDER-1)` by default, so by
+moving the main application security to
+`@Order(SecurityProperties.ACCESS_OVERRIDE_ORDER)` we ensure that the
+rule for "/me" takes precedence.
+
+== Testing the OAuth2 Client
+
+To test the new features you can just run both apps and visit
+http://localhost:9999/client in your browser. The client app will
+redirect to the local Authorization Server, which then gives the user
+the usual choice of authentication with Facebook or Github. Once that
+is complete control returns to the test client, the local access token
+is granted and authentication is complete (you should see a "Hello"
+message in your browser). If you are already authenticated with Github
+or Facebook you may not even notice the remote authentication.

@@ -1,0 +1,22 @@
+<form action="{{urlFormLogin}}" method="post">
+    {{&htmlOfCsrfHiddenInput}}
+    <fieldset>
+        <legend>
+            <h2>Login</h2>
+        </legend>
+        <div class="form-group">
+            <label for="{{usernameDomId}}">Username:</label> 
+            <input id="{{usernameDomId}}" class="form-control" type='text' 
+                   name='username'
+                   value='{{username}}' />
+        </div>
+        <div class="form-group">
+            <label for="{{passwordDomId}}">Password:</label> 
+            <input id="{{passwordDomId}}" class="form-control" type='text' 
+                   name='password' 
+                   value='{{password}}' />
+        </div>
+        <button class="btn btn-primary" type="submit">Login</button>
+
+    </fieldset>
+</form>
