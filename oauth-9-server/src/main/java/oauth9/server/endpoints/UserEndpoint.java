@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.toList;
 import static oauth9.server.config.ResourceServerConfig.URL_USER_INFO;
+import static oauth9.utils.StreamUtils.mapToList;
 
 @RestController
 public class UserEndpoint {
@@ -25,9 +25,7 @@ public class UserEndpoint {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserInfo user = new UserInfo();
         user.username = authentication.getName();
-        user.authorities = authentication.getAuthorities().stream()
-                .map(e -> e.getAuthority())
-                .collect(toList());
+        user.authorities = mapToList(authentication.getAuthorities(), e -> e.getAuthority());
         return user;
     }
 
